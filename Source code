@@ -1,0 +1,89 @@
+import hashlib
+
+#Diffie-Hellman Key Exchange to Generate Shared Secret Key
+def diffie_hellman_key_exchange(p, g, sender_private_key, receiver_private_key):
+    # Public keys calculated by sender and receiver
+    sender_public_key = (g ** sender_private_key) % p
+    receiver_public_key = (g ** receiver_private_key) % p
+
+    # Shared secret key calculation
+    shared_secret_sender = (receiver_public_key ** sender_private_key) % p
+    shared_secret_receiver = (sender_public_key ** receiver_private_key) % p
+
+    # Both values should be the same
+    assert shared_secret_sender == shared_secret_receiver
+
+    return shared_secret_sender
+
+#Sender Side - Encrypting Message with Caesar Cipher and Creating MAC
+def caesar_cipher_encrypt(message, key):
+    encrypted_message = ""
+    for char in message:
+        if char.isalpha():
+            shift = key % 26
+            new_char = chr((ord(char.lower()) - ord('a') + shift) % 26 + ord('a'))
+            encrypted_message += new_char
+        else:
+            encrypted_message += char
+    return encrypted_message
+
+def generate_mac(message, key):
+    hash_object = hashlib.sha256((message + str(key)).encode())
+    return hash_object.hexdigest()
+
+#Send Encrypted Message and MAC to Receiver
+def send_message(message, key):
+    encrypted_message = caesar_cipher_encrypt(message, key)
+    mac = generate_mac(message, key)
+    return encrypted_message, mac
+
+#Receiver Side - Decrypting Message and Verifying MAC
+def caesar_cipher_decrypt(encrypted_message, key):
+    decrypted_message = ""
+    for char in encrypted_message:
+        if char.isalpha():
+            shift = key % 26
+            new_char = chr((ord(char.lower()) - ord('a') - shift) % 26 + ord('a'))
+            decrypted_message += new_char
+        else:
+            decrypted_message += char
+    return decrypted_message
+
+def verify_mac(message, mac, key):
+    expected_mac = generate_mac(message, key)
+    return mac == expected_mac
+
+# Main Process
+def main():
+    # User Input for Diffie-Hellman Key Exchange
+    p = int(input("Enter a prime number (p): "))  # Prime number
+    g = int(input("Enter a generator (g): "))  # Generator
+
+    sender_private_key = int(input("Sender's private key: "))
+    receiver_private_key = int(input("Receiver's private key: "))
+
+    # Generate shared secret key using Diffie-Hellman key exchange
+    shared_key = diffie_hellman_key_exchange(p, g, sender_private_key, receiver_private_key)
+
+    # Sender: Encrypt message and generate MAC
+    original_message = input("Enter the message to send: ")
+    encrypted_message, mac = send_message(original_message, shared_key)
+
+    print("\n=== Sender's Output ===")
+    print("Encrypted Message:", encrypted_message)
+    print("MAC:", mac)
+
+    # Receiver: Verify the received message and MAC
+    print("\n=== Receiver's Verification ===")
+    received_encrypted_message = input("Enter the received encrypted message: ")
+    received_mac = input("Enter the received MAC: ")
+
+    decrypted_message = caesar_cipher_decrypt(received_encrypted_message, shared_key)
+    mac_valid = verify_mac(decrypted_message, received_mac, shared_key)
+
+    print("\n=== Receiver's Output ===")
+    print("Decrypted Message:", decrypted_message)
+    print("MAC Valid:", mac_valid)
+
+if __name__ == "__main__":
+    main()
